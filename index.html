@@ -1,0 +1,937 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PIT Count Command — Harsh Agarwal</title>
+<meta name="description" content="A working coordination-agent prototype for the HUD Point-in-Time count — a real rules engine over a simulated Continuum of Care network.">
+<meta name="author" content="Harsh Agarwal">
+<meta property="og:type" content="website">
+<meta property="og:title" content="PIT Count Command">
+<meta property="og:description" content="A working coordination-agent prototype for the HUD Point-in-Time count — a real rules engine over a simulated Continuum of Care network.">
+<meta property="og:image" content="https://REPLACE-ME/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="PIT Count Command">
+<meta name="twitter:description" content="A working coordination-agent prototype for the HUD Point-in-Time count — a real rules engine over a simulated Continuum of Care network.">
+<meta name="twitter:image" content="https://REPLACE-ME/og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8C%92%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap">
+
+
+<style>
+:root{
+  --ground:#EFF2F1;
+  --surface:#FFFFFF;
+  --surface-2:#F7F9F8;
+  --ink:#121E1C;
+  --ink-2:#3D4F4B;
+  --ink-3:#697D78;
+  --line:#D6DEDB;
+  --line-2:#E7ECEA;
+  --accent:#0E6E66;
+  --accent-soft:#DCEBE8;
+  --accent-ink:#0A5049;
+  --crit:#A8261D;
+  --crit-soft:#F7E3E1;
+  --warn:#96600B;
+  --warn-soft:#F7EBD8;
+  --good:#1B6338;
+  --good-soft:#DFEDE4;
+  --shadow:0 1px 2px rgba(18,30,28,.05),0 8px 24px -12px rgba(18,30,28,.18);
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --serif:"Newsreader",Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0B1211;
+    --surface:#121C1A;
+    --surface-2:#16211F;
+    --ink:#E6EDEA;
+    --ink-2:#AFC0BB;
+    --ink-3:#7F918C;
+    --line:#243330;
+    --line-2:#1C2825;
+    --accent:#54C3B4;
+    --accent-soft:#12312D;
+    --accent-ink:#7FD8CB;
+    --crit:#F08A80;
+    --crit-soft:#331916;
+    --warn:#E0AC5C;
+    --warn-soft:#2E2413;
+    --good:#6FC291;
+    --good-soft:#132B1E;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0B1211;
+  --surface:#121C1A;
+  --surface-2:#16211F;
+  --ink:#E6EDEA;
+  --ink-2:#AFC0BB;
+  --ink-3:#7F918C;
+  --line:#243330;
+  --line-2:#1C2825;
+  --accent:#54C3B4;
+  --accent-soft:#12312D;
+  --accent-ink:#7FD8CB;
+  --crit:#F08A80;
+  --crit-soft:#331916;
+  --warn:#E0AC5C;
+  --warn-soft:#2E2413;
+  --good:#6FC291;
+  --good-soft:#132B1E;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.7);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--ground);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:16px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1140px;margin:0 auto;padding:0 24px}
+@media(max-width:640px){.wrap{padding:0 16px}}
+
+/* ---------- shared bits ---------- */
+.eyebrow{
+  font-family:var(--mono);
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+}
+.rule{height:1px;background:var(--line);border:0;margin:0}
+h1,h2,h3,h4{text-wrap:balance;margin:0;font-weight:700;letter-spacing:-.02em}
+p{margin:0}
+a{color:var(--accent-ink)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+
+/* ---------- masthead ---------- */
+.mast{padding:56px 0 40px;border-bottom:1px solid var(--line)}
+.mast-tag{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:26px}
+.tag{
+  font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.06em;
+  padding:4px 9px;border:1px solid var(--line);border-radius:2px;color:var(--ink-3);
+  background:var(--surface);
+}
+.tag.on{background:var(--accent-soft);border-color:transparent;color:var(--accent-ink);font-weight:600}
+.mast h1{
+  font-size:clamp(38px,6.4vw,68px);
+  font-weight:800;
+  line-height:.98;
+  letter-spacing:-.038em;
+  margin-bottom:20px;
+}
+.mast h1 em{font-style:normal;color:var(--accent)}
+.mast-sub{
+  font-family:var(--serif);font-size:clamp(17px,2.1vw,21px);line-height:1.5;
+  color:var(--ink-2);max-width:60ch;
+}
+.mast-by{
+  margin-top:28px;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:baseline;
+  font-family:var(--mono);font-size:12px;color:var(--ink-3);
+}
+.mast-by strong{color:var(--ink);font-weight:600}
+
+/* ---------- prose section ---------- */
+section{padding:52px 0}
+.sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:24px;flex-wrap:wrap}
+.sec-head h2{font-size:clamp(24px,3.2vw,32px);letter-spacing:-.028em}
+.prose{font-family:var(--serif);font-size:18px;line-height:1.62;color:var(--ink-2);max-width:64ch;display:flex;flex-direction:column;gap:16px}
+.prose strong{color:var(--ink);font-weight:500}
+.prose .lede{font-size:20px;color:var(--ink)}
+
+.claimgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-top:32px}
+.claim{background:var(--surface);padding:20px}
+.claim .n{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--accent);letter-spacing:.1em;display:block;margin-bottom:10px}
+.claim h4{font-size:15px;margin-bottom:6px;letter-spacing:-.01em}
+.claim p{font-size:14px;color:var(--ink-3);line-height:1.5}
+
+/* ---------- console ---------- */
+.console-wrap{padding:0 0 52px}
+.console{
+  background:var(--surface);border:1px solid var(--line);border-radius:4px;
+  box-shadow:var(--shadow);overflow:hidden;
+}
+.cbar{
+  display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+  padding:12px 18px;border-bottom:1px solid var(--line);background:var(--surface-2);
+}
+.cbar-id{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--ink)}
+.cbar-id span{color:var(--ink-3);font-weight:400}
+.cbar-sep{width:1px;height:16px;background:var(--line)}
+.cbar-item{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+.cbar-item b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.cbar-score{margin-left:auto;display:flex;align-items:center;gap:10px}
+.scorepill{
+  font-family:var(--mono);font-size:13px;font-weight:600;padding:5px 12px;border-radius:2px;
+  font-variant-numeric:tabular-nums;transition:background .35s,color .35s;
+}
+.sev-crit{background:var(--crit-soft);color:var(--crit)}
+.sev-warn{background:var(--warn-soft);color:var(--warn)}
+.sev-good{background:var(--good-soft);color:var(--good)}
+
+.panes{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.08fr);align-items:start}
+@media(max-width:900px){.panes{grid-template-columns:1fr}}
+.pane{min-width:0}
+@media(min-width:901px){
+  .pane:first-child{position:sticky;top:0;max-height:100vh;display:flex;flex-direction:column}
+  .pane:first-child .scroll{max-height:none;flex:1}
+}
+.pane+.pane{border-left:1px solid var(--line)}
+@media(max-width:900px){.pane+.pane{border-left:0;border-top:1px solid var(--line)}}
+.pane-head{
+  display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line-2);
+  background:var(--surface);position:sticky;top:0;z-index:2;
+}
+.pane-head .eyebrow{flex:0 0 auto}
+.tabs{display:flex;gap:2px;margin-left:auto}
+.tab{
+  font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.04em;
+  padding:5px 10px;border:1px solid var(--line);background:var(--surface);color:var(--ink-3);
+  border-radius:2px;cursor:pointer;transition:all .15s;
+}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+.tab:hover:not([aria-selected="true"]){color:var(--ink);border-color:var(--ink-3)}
+
+.scroll{max-height:520px;overflow-y:auto;overflow-x:auto}
+.pane-foot{
+  border-top:1px solid var(--line);background:var(--surface-2);padding:11px 14px;
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 14px;
+}
+.pf{display:flex;justify-content:space-between;gap:8px;font-family:var(--mono);font-size:11px;color:var(--ink-3);white-space:nowrap}
+.pf b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.pf b.short{color:var(--crit)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{
+  font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-3);text-align:left;padding:9px 14px;border-bottom:1px solid var(--line);
+  background:var(--surface-2);position:sticky;top:0;white-space:nowrap;
+}
+td{padding:9px 14px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+tbody tr{transition:background .15s}
+tbody tr:hover{background:var(--surface-2)}
+tbody tr.flagged{box-shadow:inset 3px 0 0 var(--crit)}
+tbody tr.flagged-w{box-shadow:inset 3px 0 0 var(--warn)}
+.oname{font-weight:600;color:var(--ink);letter-spacing:-.005em}
+.otype{font-family:var(--mono);font-size:10px;color:var(--ink-3);letter-spacing:.05em;text-transform:uppercase;display:block;margin-top:1px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12px}
+.chip{
+  display:inline-block;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.05em;
+  padding:2px 7px;border-radius:2px;white-space:nowrap;text-transform:uppercase;
+}
+.bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden;min-width:52px;margin-top:4px}
+.bar i{display:block;height:100%;border-radius:2px;transition:width .5s ease}
+
+/* agent pane */
+.agent-body{padding:16px 18px 20px;display:flex;flex-direction:column;gap:14px}
+.runrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+button.act{
+  font-family:var(--sans);font-size:13px;font-weight:600;letter-spacing:-.005em;
+  padding:9px 16px;border-radius:2px;border:1px solid var(--ink);background:var(--ink);color:var(--ground);
+  cursor:pointer;transition:opacity .15s,transform .05s;
+}
+button.act:hover{opacity:.86}
+button.act:active{transform:translateY(1px)}
+button.act[disabled]{opacity:.4;cursor:default}
+button.ghost{background:transparent;color:var(--ink-2);border-color:var(--line)}
+button.ghost:hover{color:var(--ink);border-color:var(--ink-3);opacity:1}
+button.tiny{font-family:var(--mono);font-size:11px;font-weight:500;padding:4px 9px;letter-spacing:.03em}
+
+.log{
+  font-family:var(--mono);font-size:11.5px;line-height:1.7;color:var(--ink-3);
+  background:var(--surface-2);border:1px solid var(--line-2);border-radius:2px;
+  padding:11px 13px;min-height:96px;max-height:150px;overflow-y:auto;white-space:pre-wrap;
+}
+.log b{color:var(--accent-ink);font-weight:600}
+.log .ok{color:var(--good)}
+.log .hit{color:var(--warn)}
+
+.dims{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--line-2);border:1px solid var(--line-2)}
+@media(max-width:520px){.dims{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.dim{background:var(--surface);padding:9px 8px}
+.dim .k{font-family:var(--mono);font-size:8.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dim .v{font-family:var(--mono);font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.02em;display:block;margin:3px 0 4px;transition:color .35s;line-height:1}
+.dim .w{font-family:var(--mono);font-size:8.5px;color:var(--ink-3);white-space:nowrap}
+
+.findings{display:flex;flex-direction:column;gap:8px}
+.finding{border:1px solid var(--line);border-radius:2px;background:var(--surface);overflow:hidden}
+.finding>summary{
+  list-style:none;cursor:pointer;padding:11px 13px;display:flex;gap:10px;align-items:flex-start;
+}
+.finding>summary::-webkit-details-marker{display:none}
+.finding[open]>summary{border-bottom:1px solid var(--line-2);background:var(--surface-2)}
+.fsev{width:3px;align-self:stretch;border-radius:2px;flex:0 0 3px;margin:1px 0}
+.ftitle{flex:1;min-width:0}
+.ftitle h4{font-size:13.5px;letter-spacing:-.01em;line-height:1.4}
+.ftitle p{font-size:12.5px;color:var(--ink-3);margin-top:3px;line-height:1.45}
+.fcar{font-family:var(--mono);font-size:14px;color:var(--ink-3);flex:0 0 auto;transition:transform .2s}
+.finding[open] .fcar{transform:rotate(90deg)}
+.fbody{padding:12px 13px 13px;display:flex;flex-direction:column;gap:11px}
+.evi{font-family:var(--mono);font-size:11.5px;line-height:1.75;color:var(--ink-2)}
+.evi div{padding:2px 0;border-bottom:1px dotted var(--line-2)}
+.evi div:last-child{border:0}
+.evi span{color:var(--ink-3)}
+.rec{font-size:13px;color:var(--ink-2);line-height:1.5;border-left:2px solid var(--accent);padding-left:11px}
+.rec b{color:var(--ink);font-weight:600}
+.draft{
+  font-family:var(--mono);font-size:11.5px;line-height:1.7;white-space:pre-wrap;
+  background:var(--accent-soft);border-radius:2px;padding:12px 13px;color:var(--ink-2);
+}
+.empty{font-family:var(--mono);font-size:12px;color:var(--ink-3);padding:22px 0;text-align:center}
+
+/* simulate */
+.sim{border-top:1px solid var(--line);background:var(--surface-2);padding:16px 18px}
+.sim-head{display:flex;align-items:baseline;gap:12px;margin-bottom:4px;flex-wrap:wrap}
+.sim-note{font-size:12.5px;color:var(--ink-3);max-width:70ch;line-height:1.5;margin-bottom:12px}
+.sim-btns{display:flex;flex-wrap:wrap;gap:7px}
+button.sim-b{
+  font-family:var(--mono);font-size:11.5px;font-weight:500;letter-spacing:.01em;
+  padding:7px 11px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);
+  border-radius:2px;cursor:pointer;transition:all .15s;
+}
+button.sim-b:hover{border-color:var(--accent);color:var(--accent-ink)}
+button.sim-b.done{background:var(--accent-soft);border-color:transparent;color:var(--accent-ink)}
+
+.caption{font-family:var(--mono);font-size:11px;color:var(--ink-3);line-height:1.6;margin-top:12px;letter-spacing:.01em}
+
+/* metrics */
+.mtable{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+.mtable th{background:transparent;border-bottom:1px solid var(--line);position:static}
+.mtable td{padding:12px 14px 12px 0;border-bottom:1px solid var(--line-2);vertical-align:top}
+.mtable th{padding:8px 14px 8px 0}
+.mtable td:first-child{font-weight:600;color:var(--ink);width:30%}
+.mtable td:nth-child(2){font-family:var(--mono);font-size:12.5px;color:var(--accent-ink);width:26%}
+.mtable td:last-child{color:var(--ink-3);font-size:13.5px}
+@media(max-width:700px){.mtable,.mtable tbody,.mtable tr,.mtable td{display:block;width:auto!important}.mtable thead{display:none}.mtable tr{border-bottom:1px solid var(--line);padding:10px 0}.mtable td{border:0;padding:2px 0}}
+
+.qlist{display:flex;flex-direction:column;gap:14px;margin-top:8px;max-width:64ch}
+.q{display:flex;gap:14px;align-items:flex-start}
+.q .qn{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--accent);flex:0 0 22px;padding-top:4px}
+.q p{font-family:var(--serif);font-size:17px;line-height:1.55;color:var(--ink-2)}
+
+footer{border-top:1px solid var(--line);padding:40px 0 64px}
+.foot{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;align-items:flex-end}
+.foot .l{font-family:var(--serif);font-size:18px;color:var(--ink-2);max-width:46ch;line-height:1.55}
+.foot .r{font-family:var(--mono);font-size:12px;color:var(--ink-3);line-height:1.9;text-align:right}
+@media(max-width:640px){.foot .r{text-align:left}}
+.foot .r b{color:var(--ink);font-weight:600}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="mast">
+  <div class="mast-tag">
+    <span class="tag on">Working prototype</span>
+    <span class="tag">Case study · Civic Roundtable</span>
+    <span class="tag">Aug 2026</span>
+  </div>
+  <h1>The count is one night.<br>The coordination is <em>eleven weeks.</em></h1>
+  <p class="mast-sub">A Continuum of Care running a HUD Point-in-Time count coordinates thirty-plus partner organizations toward a single January night, and the work that decides whether the count is any good happens in the eleven weeks before it. That work is currently done in a spreadsheet and an inbox. This is a prototype of what it looks like when an agent runs it instead.</p>
+  <div class="mast-by">
+    <span><strong>Harsh Agarwal</strong></span>
+  </div>
+</header>
+
+<section>
+  <div class="sec-head"><span class="eyebrow">01 / The read</span><h2>Why coordination, not retrieval</h2></div>
+  <div class="prose">
+    <p class="lede">Reading the product from the outside, the AI layer looks like it does retrieval well — verified answers pulled out of the files and workspaces a network has already accumulated. That is the right first move, and it is genuinely hard to do safely in government. It is also the move that everyone in the category is making.</p>
+    <p>The harder and more defensible thing sits one step further out. Retrieval answers a question someone thought to ask. Coordination is the problem of <strong>nobody asking the question in time</strong> — the partner org that goes quiet in week six, the rural zone that is short two teams, the domestic violence provider whose data has to be aggregated separately and was never confirmed. Those failures are invisible until they are expensive, and they are exactly the failures that live in the seams <em>between</em> Workspaces, Forms, Events, and the CRM. Nobody else in govtech is positioned to see across all four at once. You already are.</p>
+    <p>So I picked the sharpest instance of that problem I could find in a vertical Roundtable clearly leads with, and built the thing. The HUD Point-in-Time count is annual, federally mandated, deadline-locked to a single night between January 22 and 31, dependent on volunteer labor in the coldest week of the year, and executed across dozens of organizations that do not report to each other. It is a coordination problem with a scoreboard — and Roundtable's own blog is running a 2026 PIT debrief with Maricopa County and Prince William County, so whether it matters is not in question.</p>
+  </div>
+
+  <div class="claimgrid">
+    <div class="claim"><span class="n">THE PRIMITIVES</span><h4>You already have the inputs</h4><p>Partner records in the CRM, submissions through Forms, count-night logistics in Events, methodology docs in the Knowledge Base. The data is there. Nothing reads across it on a clock.</p></div>
+    <div class="claim"><span class="n">THE GAP</span><h4>Retrieval is passive</h4><p>An agent that only answers when asked cannot catch the thing nobody knew to look for. Coordination failure is silent by definition.</p></div>
+    <div class="claim"><span class="n">THE WEDGE</span><h4>A deadline makes it measurable</h4><p>PIT has a fixed date, a federal spec, and a prior-year baseline. That means the agent's value is provable in one cycle, not argued about in a QBR.</p></div>
+  </div>
+</section>
+
+<hr class="rule">
+</div>
+
+<section class="console-wrap">
+<div class="wrap">
+  <div class="sec-head"><span class="eyebrow">02 / The prototype</span><h2>PIT Count Command</h2></div>
+  <p class="prose" style="margin-bottom:24px;max-width:68ch"><span>A coordination agent scoped to one CoC's count cycle. The network below is synthetic, but the rules the agent runs are the real ones — HUD's count window, the Housing Inventory Count dependency, the separate handling required for domestic violence providers, and the volunteer attrition every coordinator plans around. <strong>Run the scan, then use the simulate controls to change the underlying state and run it again.</strong> The findings and the score recompute; nothing here is a canned screenshot.</span></p>
+
+  <div class="console">
+    <div class="cbar">
+      <span class="cbar-id">Riverbend CoC <span>· CoC-XX-500 · simulated</span></span>
+      <span class="cbar-sep"></span>
+      <span class="cbar-item">Count night <b>27 Jan 2027</b></span>
+      <span class="cbar-sep"></span>
+      <span class="cbar-item">T-minus <b id="tminus">77</b> days</span>
+      <div class="cbar-score">
+        <span class="eyebrow">Readiness</span>
+        <span class="scorepill sev-warn" id="scorepill">—</span>
+      </div>
+    </div>
+
+    <div class="panes">
+      <div class="pane">
+        <div class="pane-head">
+          <span class="eyebrow">Network state</span>
+          <div class="tabs" role="tablist">
+            <button class="tab" role="tab" aria-selected="true" data-view="orgs">Partners <span id="orgcount">34</span></button>
+            <button class="tab" role="tab" aria-selected="false" data-view="zones">Zones 12</button>
+          </div>
+        </div>
+        <div class="scroll" id="tablewrap"></div>
+        <div class="pane-foot" id="panefoot"></div>
+      </div>
+
+      <div class="pane">
+        <div class="pane-head"><span class="eyebrow">Coordination agent</span></div>
+        <div class="agent-body">
+          <div class="runrow">
+            <button class="act" id="runbtn">Run readiness scan</button>
+            <button class="act ghost tiny" id="resetbtn">Reset state</button>
+          </div>
+          <div class="log" id="log">Idle. Agent has read access to 34 partner records, 12 zone assignments, the HIC roster, and the prior-year methodology doc.
+Press <b>Run readiness scan</b>.</div>
+          <div class="dims" id="dims"></div>
+          <div class="findings" id="findings"><div class="empty">No scan run yet.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sim">
+      <div class="sim-head"><span class="eyebrow">Simulate a change</span><span class="cbar-item" style="color:var(--ink-3)">then re-run the scan</span></div>
+      <p class="sim-note">These mutate the underlying records the same way a real submission, a confirmation, or the passage of time would. This is the part that separates a prototype from a mockup: the agent is computing over state, so changing the state changes what it says.</p>
+      <div class="sim-btns" id="simbtns"></div>
+    </div>
+  </div>
+
+  <p class="caption">Synthetic data throughout. "Riverbend CoC" is not a real Continuum of Care and no record here describes a real organization or person. Rules encoded from HUD's PIT Count Planning Worksheet and Methodology Guide; attrition and reliability figures are illustrative defaults a real deployment would learn from the CoC's own history.</p>
+</div>
+</section>
+
+<div class="wrap">
+<hr class="rule">
+
+<section>
+  <div class="sec-head"><span class="eyebrow">03 / Before building it</span><h2>How to know this worked</h2></div>
+  <div class="prose" style="margin-bottom:8px"><p>Success metrics set before the build and instrumentation in place at launch: here is what to commit to before a line of production code. The counterfactual is available and cheap: every CoC has last year's numbers.</p></div>
+  <table class="mtable">
+    <thead><tr><th>What we're moving</th><th>Instrumented as</th><th>Why this one</th></tr></thead>
+    <tbody>
+      <tr><td>Coordinator hours per cycle</td><td>time_in_coordination_surface, self-reported cycle log</td><td>The blunt one. If we don't give a coordinator back a working week, the agent is a novelty. Baseline from prior-cycle interview.</td></tr>
+      <tr><td>Late partner submissions</td><td>submission_ts vs. deadline_ts, per org, per cycle</td><td>Direct proxy for whether proactive nudges beat reactive chasing. Cleanest year-over-year comparison we have.</td></tr>
+      <tr><td>Zone coverage at T-14</td><td>coverage_ratio snapshot, daily</td><td>Coverage fixed two weeks out is fixable. Coverage discovered on count night is not. Moving the discovery date earlier <em>is</em> the product.</td></tr>
+      <tr><td>HUD data-quality flags returned</td><td>hdx_flag_count, post-submission</td><td>The outcome the CoC is actually graded on, and the one that survives a budget conversation.</td></tr>
+      <tr><td>Findings acted on vs. dismissed</td><td>finding_id → action taken / dismissed / ignored</td><td>The honest trust metric. A high dismiss rate means the agent is noisy, and I'd rather find that in week two than in the renewal.</td></tr>
+    </tbody>
+  </table>
+  <p class="caption" style="margin-top:18px">The last row is the one I'd watch hardest. An agent that surfaces twelve findings a coordinator ignores is worse than no agent — it trains people to close the tab. I'd ship with a deliberately high bar for what gets surfaced and loosen it only against that signal.</p>
+</section>
+
+<hr class="rule">
+
+<section>
+  <div class="sec-head"><span class="eyebrow">04 / Open questions</span><h2>Five questions to answer first</h2></div>
+  <div class="prose" style="margin-bottom:4px"><p>Built from public information, which means the parts most likely to be wrong are the parts only the team inside can see.</p></div>
+  <div class="qlist">
+    <div class="q"><span class="qn">01</span><p>Does a CoC coordinator actually live in Roundtable daily, or is the daily user the partner org and the coordinator a weekly visitor? That inverts who the agent should be talking to.</p></div>
+    <div class="q"><span class="qn">02</span><p>How much of a network's state is genuinely in the platform versus still in the coordinator's own spreadsheet? An agent reasoning over 60% of reality is worse than one that knows it has 60%.</p></div>
+    <div class="q"><span class="qn">03</span><p>Where has proactive AI already been tried and rejected here? The team has likely learned something about tolerance for an agent that speaks first, and that lesson is worth inheriting rather than rediscovering.</p></div>
+    <div class="q"><span class="qn">04</span><p>Is PIT the right first vertical, or is it seasonal enough that an always-on surface is a better wedge — election certification, or the continuous side of emergency response?</p></div>
+    <div class="q"><span class="qn">05</span><p>What does the deployments team say is the real reason a network stalls in month three? That answer probably reorders everything above.</p></div>
+  </div>
+</section>
+</div>
+
+<footer>
+<div class="wrap foot">
+  <p class="l">A working prototype of a coordination agent for the HUD Point-in-Time count, built from public information.</p>
+  <div class="r">
+    <b>Harsh Agarwal</b>
+  </div>
+</div>
+</footer>
+
+<script>
+"use strict";
+
+/* ============================================================
+   DOMAIN MODEL — synthetic Riverbend CoC
+   ============================================================ */
+const ZONE_DEF = [
+  {id:"Z1",  name:"Downtown Core",          terrain:"Urban core",        prior:214, req:10},
+  {id:"Z2",  name:"Riverfront Encampments", terrain:"Encampment corridor",prior:186, req:9},
+  {id:"Z3",  name:"North Transit Corridor", terrain:"Transit",           prior:92,  req:5},
+  {id:"Z4",  name:"Eastside Industrial",    terrain:"Encampment",        prior:143, req:8},
+  {id:"Z5",  name:"University District",    terrain:"Urban",             prior:61,  req:4},
+  {id:"Z6",  name:"South County Rural",     terrain:"Rural · 240 sq mi", prior:48,  req:7},
+  {id:"Z7",  name:"Airport Perimeter",      terrain:"Transit",           prior:37,  req:3},
+  {id:"Z8",  name:"Westgate Commercial",    terrain:"Suburban",          prior:54,  req:4},
+  {id:"Z9",  name:"Mill Creek Corridor",    terrain:"Encampment",        prior:78,  req:6},
+  {id:"Z10", name:"Northfield Rural",       terrain:"Rural · 180 sq mi", prior:29,  req:6},
+  {id:"Z11", name:"Harbor & Marine Term.",  terrain:"Industrial",        prior:44,  req:4},
+  {id:"Z12", name:"Route 9 Motel Strip",    terrain:"Motel / suburban",  prior:66,  req:4}
+];
+
+// type: es=emergency shelter, th=transitional, so=street outreach, dv=domestic violence,
+// yh=youth, va=veteran, hm=HMIS lead, co=county agency, fb=faith-based, sl=school liaison
+const ORG_DEF = [
+  ["O01","Riverbend Housing Collective","co",["Z1","Z2"],1,9,1,3,0.94,"M. Alvarez","Continuum Director"],
+  ["O02","Downtown Emergency Shelter","es",["Z1"],1,7,1,5,0.91,"T. Nakamura","Shelter Director"],
+  ["O03","Riverfront Street Outreach","so",["Z2","Z9"],1,12,1,2,0.96,"D. Okonkwo","Outreach Lead"],
+  ["O04","Eastside Navigation Center","es",["Z4"],0,5,1,9,0.78,"R. Petrov","Site Manager"],
+  ["O05","Safe Harbor DV Services","dv",["Z1","Z8"],0,3,0,26,0.62,"—","Confidential"],
+  ["O06","Bridge Youth Services","yh",["Z5","Z3"],1,6,1,6,0.88,"K. Ferreira","Program Director"],
+  ["O07","Veterans Forward Riverbend","va",["Z1","Z11"],1,5,1,4,0.90,"J. Whitfield","VA Liaison"],
+  ["O08","Riverbend HMIS Lead","hm",["Z1"],1,3,1,1,0.98,"S. Chandra","HMIS Administrator"],
+  ["O09","South County Human Services","co",["Z6"],1,4,0,19,0.58,"L. Bergman","Deputy Director"],
+  ["O10","Northfield Township Outreach","so",["Z10"],0,2,0,31,0.44,"—","Vacant"],
+  ["O11","St. Aidan's Winter Shelter","fb",["Z1","Z12"],1,8,1,7,0.83,"Fr. P. Duarte","Shelter Coordinator"],
+  ["O12","Millbrook Transitional Housing","th",["Z9"],1,4,1,5,0.87,"A. Boateng","Housing Manager"],
+  ["O13","University District Drop-In","yh",["Z5"],1,6,1,3,0.92,"C. Villanueva","Site Lead"],
+  ["O14","Harbor Works Recovery Housing","th",["Z11"],0,3,1,12,0.71,"M. Silva","Operations"],
+  ["O15","Westgate Family Shelter","es",["Z8"],1,6,1,6,0.85,"N. Abadi","Director"],
+  ["O16","Route 9 Motel Voucher Program","co",["Z12"],1,3,0,16,0.66,"E. Lindqvist","Program Officer"],
+  ["O17","Riverbend Transit Authority","co",["Z3","Z7"],1,7,1,8,0.80,"G. Marchetti","Community Liaison"],
+  ["O18","Airport Area Coalition","fb",["Z7"],0,2,0,23,0.51,"—","Rotating volunteer"],
+  ["O19","Mill Creek Mutual Aid","so",["Z9"],1,11,1,2,0.93,"Y. Tesfaye","Field Coordinator"],
+  ["O20","County Public Health — Outreach","co",["Z2","Z4"],1,8,1,4,0.89,"H. Kaur","Nurse Manager"],
+  ["O21","Riverbend Public Schools McKinney-Vento","sl",["Z5","Z8"],1,4,1,10,0.76,"B. Ortiz","Homeless Liaison"],
+  ["O22","Eastside Faith Alliance","fb",["Z4"],1,9,1,9,0.79,"Rev. D. Kim","Volunteer Chair"],
+  ["O23","South County Volunteer Corps","fb",["Z6"],0,3,0,28,0.47,"—","Unassigned"],
+  ["O24","Riverbend Legal Aid","co",["Z1"],1,2,1,13,0.74,"F. Nwosu","Staff Attorney"],
+  ["O25","Harbor Street Medicine","so",["Z11","Z2"],1,5,1,5,0.86,"P. Ivanova","Clinical Lead"],
+  ["O26","Northfield Food Pantry Network","fb",["Z10"],0,2,0,34,0.39,"—","No named contact"],
+  ["O27","Riverbend Veterans Housing Trust","va",["Z12"],1,3,1,11,0.77,"W. Castellano","Case Manager"],
+  ["O28","Second Chance Reentry Services","th",["Z4"],1,4,1,7,0.82,"O. Mensah","Reentry Director"],
+  ["O29","Riverbend Youth Shelter","yh",["Z1"],1,5,1,4,0.90,"I. Rasmussen","Night Supervisor"],
+  ["O30","Westgate Interfaith Council","fb",["Z8"],1,4,1,14,0.69,"Rev. S. Amari","Council Chair"],
+  ["O31","County Emergency Management","co",["Z6","Z10"],1,6,1,6,0.84,"V. Delgado","Planning Section"],
+  ["O32","Riverbend Warming Center","es",["Z3"],0,4,1,15,0.68,"T. Bianchi","Seasonal Manager"],
+  ["O33","Peer Support Network","so",["Z3","Z5"],1,7,1,3,0.91,"Z. Haddad","Peer Lead"],
+  ["O34","Riverbend Community College Vol.","sl",["Z5"],1,22,0,20,0.55,"A. Petrosyan","Service-Learning Office"]
+];
+
+const TYPE_LABEL={es:"Emergency shelter",th:"Transitional",so:"Street outreach",dv:"DV provider",
+  yh:"Youth provider",va:"Veteran services",hm:"HMIS lead",co:"County agency",fb:"Faith-based",sl:"School liaison"};
+const BED_TYPES=["es","th","yh","dv"];      // orgs that report beds → HIC dependency
+const ATTRITION=0.18;                        // historical count-night no-show
+const TEAM_SIZE=3;
+
+let S; // live state
+
+function buildState(){
+  return {
+    tminus:77,
+    zones:ZONE_DEF.map(z=>({...z})),
+    orgs:ORG_DEF.map(o=>({
+      id:o[0],name:o[1],type:o[2],zones:o[3],
+      hic:!!o[4], pledged:o[5], kit:!!o[6], silent:o[7], rel:o[8],
+      contact:o[9], role:o[10]
+    })),
+    sims:{}
+  };
+}
+
+/* ============================================================
+   RULES ENGINE — everything below is computed, not authored
+   ============================================================ */
+function analyze(s){
+  const teamsByZone={}; s.zones.forEach(z=>teamsByZone[z.id]=0);
+  let pledgedTotal=0;
+  s.orgs.forEach(o=>{
+    pledgedTotal+=o.pledged;
+    const per=o.pledged/TEAM_SIZE/o.zones.length;
+    o.zones.forEach(z=>{ if(teamsByZone[z]!==undefined) teamsByZone[z]+=per; });
+  });
+
+  const zoneRows=s.zones.map(z=>{
+    const eff=teamsByZone[z.id]*(1-ATTRITION);
+    return {...z, teams:teamsByZone[z.id], eff, ratio: eff/z.req};
+  });
+
+  const reqTeams=s.zones.reduce((a,z)=>a+z.req,0);
+  const neededVols=reqTeams*TEAM_SIZE;
+  const effVols=pledgedTotal*(1-ATTRITION);
+
+  // dim 1 — coverage weighted by prior-year unsheltered population at risk
+  const priorTotal=zoneRows.reduce((a,z)=>a+z.prior,0);
+  const covered=zoneRows.reduce((a,z)=>a+z.prior*Math.min(1,z.ratio),0);
+  const dCoverage=covered/priorTotal;
+
+  // dim 2 — staffing after attrition
+  const dStaffing=Math.min(1,effVols/neededVols);
+
+  // dim 3 — HIC confirmation among bed-reporting orgs
+  const bedOrgs=s.orgs.filter(o=>BED_TYPES.includes(o.type));
+  const dHic=bedOrgs.filter(o=>o.hic).length/bedOrgs.length;
+
+  // dim 4 — HUD category completeness
+  const cats=[["dv","Domestic violence provider"],["yh","Youth provider"],
+              ["va","Veteran services"],["hm","HMIS lead"]];
+  const catMiss=cats.filter(([t])=>!s.orgs.some(o=>o.type===t&&o.hic&&o.kit));
+  const dCompliance=(cats.length-catMiss.length)/cats.length;
+
+  // dim 5 — engagement / silence risk
+  const atRisk=s.orgs.filter(o=>o.silent>14 && o.rel<0.75);
+  const dEngage=1-(atRisk.length/s.orgs.length);
+
+  const dims=[
+    {k:"Coverage",   v:dCoverage,   w:.30},
+    {k:"Staffing",   v:dStaffing,   w:.25},
+    {k:"HIC",        v:dHic,        w:.20},
+    {k:"Compliance", v:dCompliance, w:.15},
+    {k:"Engagement", v:dEngage,     w:.10}
+  ];
+  const score=Math.round(dims.reduce((a,d)=>a+d.v*d.w,0)*100);
+
+  /* ---- findings ---- */
+  const F=[];
+
+  // R1 coverage gaps, ranked by population at risk — and matched against surplus
+  const gaps=zoneRows.filter(z=>z.ratio<0.95).sort((a,b)=>(b.prior*(1-b.ratio))-(a.prior*(1-a.ratio)));
+  const surplus=zoneRows.filter(z=>z.ratio>1.15).sort((a,b)=>(b.eff-b.req)-(a.eff-a.req));
+  if(gaps.length){
+    const unreached=Math.round(gaps.reduce((a,z)=>a+z.prior*(1-Math.min(1,z.ratio)),0));
+    let rec;
+    if(surplus.length){
+      const sp=surplus[0], sTeams=Math.floor(sp.eff-sp.req), g=gaps[0];
+      const donors=s.orgs.filter(o=>o.zones.includes(sp.id)).sort((x,y)=>y.pledged-x.pledged);
+      rec=`Reassign before recruiting. <b>${sp.name}</b> is carrying ${sp.eff.toFixed(1)} teams against a requirement of ${sp.req} — ${sTeams} surplus team${sTeams!==1?"s":""} standing on ${sp.prior} people, while <b>${g.name}</b> covers ${g.prior} with ${Math.round(g.ratio*100)}% of what it needs. ${donors.length?`<b>${donors[0].name}</b> alone pledges ${donors[0].pledged} volunteers into ${sp.id}; splitting that group is the single highest-leverage move available and it costs nothing.`:""}`;
+    } else {
+      rec=`<b>${gaps[0].name}</b> is the highest-value fix: it needs ${Math.ceil(gaps[0].req-gaps[0].eff)} more team${Math.ceil(gaps[0].req-gaps[0].eff)!==1?"s":""} and carries ${gaps[0].prior} people from last year's count. No zone currently has surplus to reassign, so this one requires recruiting.`;
+    }
+    F.push({
+      sev: unreached>90?"crit":"warn",
+      rule:"R1 · zone coverage vs. prior-year population",
+      title:`${gaps.length} zone${gaps.length>1?"s":""} under-covered — ~${unreached} people from last year's count sit outside adequate coverage`,
+      sub:`Effective team count applies the ${Math.round(ATTRITION*100)}% count-night attrition this CoC has averaged. Ranked by population at risk, not by size of the gap — a rural zone short two teams matters less than a corridor short one.`,
+      evidence: gaps.slice(0,7).map(z=>
+        `${z.id} ${z.name}<span> — ${z.eff.toFixed(1)} of ${z.req} teams (${Math.round(z.ratio*100)}%) · ${z.prior} counted last yr · ${z.terrain}</span>`)
+        .concat(surplus.map(z=>`${z.id} ${z.name}<span> — SURPLUS · ${z.eff.toFixed(1)} of ${z.req} teams (${Math.round(z.ratio*100)}%) · only ${z.prior} counted last yr</span>`)),
+      rec,
+      draft:null
+    });
+  }
+
+  // R2 HIC confirmations outstanding
+  const noHic=bedOrgs.filter(o=>!o.hic);
+  if(noHic.length){
+    F.push({
+      sev: noHic.length>3?"crit":"warn",
+      rule:"R2 · Housing Inventory Count dependency",
+      title:`${noHic.length} bed-reporting partner${noHic.length>1?"s have":" has"} not confirmed HIC inventory`,
+      sub:"The HIC is submitted alongside the PIT and shares its reference night. Unconfirmed inventory becomes a sheltered-count discrepancy HUD flags on receipt.",
+      evidence: noHic.map(o=>
+        `${o.name}<span> — ${TYPE_LABEL[o.type]} · ${o.silent}d since contact · reliability ${o.rel.toFixed(2)} · ${o.contact==="—"?"no named contact":o.contact+", "+o.role}</span>`),
+      rec:`Confirm inventory before survey kits ship. <b>${noHic.filter(o=>o.contact==="—").length} of these have no named contact</b> in the CRM — that is the blocker to fix first, and it is a CRM data problem, not a count problem.`,
+      draft: noHic.find(o=>o.contact!=="—")||noHic[0]
+    });
+  }
+
+  // R3 HUD category completeness
+  if(catMiss.length){
+    F.push({
+      sev:"crit",
+      rule:"R3 · HUD subpopulation coverage",
+      title:`${catMiss.length} required subpopulation categor${catMiss.length>1?"ies are":"y is"} not fully confirmed`,
+      sub:"HUD requires these populations reported separately. DV providers in particular cannot enter client-level data into HMIS — their numbers must be aggregated on a separate path that has to be agreed before count night, not after.",
+      evidence: catMiss.map(([t,label])=>{
+        const cands=s.orgs.filter(o=>o.type===t);
+        return `${label}<span> — ${cands.length} partner${cands.length>1?"s":""} in network, none with both HIC confirmed and survey kit acknowledged (${cands.map(c=>c.name).join("; ")})</span>`;
+      }),
+      rec:"This is the finding I'd have the agent escalate hardest. It is invisible in a coverage dashboard, it cannot be fixed on count night, and it is the one most likely to invalidate a subpopulation figure the CoC's funding depends on.",
+      draft: catMiss.length? s.orgs.find(o=>o.type===catMiss[0][0]) : null
+    });
+  }
+
+  // R4 silence risk
+  if(atRisk.length){
+    const sorted=[...atRisk].sort((a,b)=>(b.silent*(1-b.rel))-(a.silent*(1-a.rel)));
+    F.push({
+      sev: atRisk.length>4?"warn":"warn",
+      rule:"R4 · engagement decay (silence × prior reliability)",
+      title:`${atRisk.length} partners are trending toward no-show`,
+      sub:"Scored on days silent weighted by prior-cycle reliability, so a quiet partner that always delivers is not treated the same as a quiet partner that dropped last year.",
+      evidence: sorted.slice(0,6).map(o=>
+        `${o.name}<span> — ${o.silent}d silent · reliability ${o.rel.toFixed(2)} · ${o.pledged} pledged across ${o.zones.join(", ")} · ${o.contact==="—"?"NO NAMED CONTACT":o.contact}</span>`),
+      rec:`If all ${atRisk.length} drop, the network loses <b>${atRisk.reduce((a,o)=>a+o.pledged,0)} pledged volunteers</b> — ${Math.round(atRisk.reduce((a,o)=>a+o.pledged,0)/neededVols*100)}% of total need. Worth a personal call from the Continuum Director, not another all-partners email.`,
+      draft: sorted[0]
+    });
+  }
+
+  // R5 survey kit acknowledgement
+  const noKit=s.orgs.filter(o=>!o.kit);
+  if(noKit.length){
+    F.push({
+      sev:"warn",
+      rule:"R5 · survey instrument version drift",
+      title:`${noKit.length} partners have not acknowledged the 2027 survey kit`,
+      sub:"Partners running last cycle's instrument produce records missing this cycle's subpopulation fields. The failure surfaces during de-duplication, after the night, when it cannot be corrected.",
+      evidence: noKit.slice(0,6).map(o=>`${o.name}<span> — ${TYPE_LABEL[o.type]} · ${o.pledged} volunteers pledged · zones ${o.zones.join(", ")}</span>`),
+      rec:"Cheapest finding on this list to resolve and the one most likely to be skipped. A read receipt on the Knowledge Base doc closes it — which is instrumentation you'd already have.",
+      draft: noKit[0]
+    });
+  }
+
+  // R6 duplicate-count risk from overlapping assignment
+  const multi=s.orgs.filter(o=>o.zones.length>1);
+  const overlap={};
+  multi.forEach(o=>o.zones.forEach(z=>{overlap[z]=(overlap[z]||0)+1;}));
+  const hot=Object.entries(overlap).filter(([,n])=>n>=3);
+  if(hot.length){
+    F.push({
+      sev:"warn",
+      rule:"R6 · de-duplication exposure",
+      title:`${hot.length} zone${hot.length>1?"s have":" has"} 3+ organizations canvassing without a documented split`,
+      sub:"Overlapping canvass without a street-level split is the most common source of double-counting, and double-counting is the criticism the count takes publicly every year.",
+      evidence: hot.map(([z,n])=>{
+        const zn=s.zones.find(x=>x.id===z);
+        return `${z} ${zn?zn.name:""}<span> — ${n} multi-zone orgs assigned · ${zn?zn.prior:"?"} counted last yr · ${zn?zn.terrain:""}</span>`;
+      }),
+      rec:"Assign a street-level split per zone and record it in the methodology doc before training. This is where I'd want to be corrected by someone who has actually run a count — my instinct is that CoCs already solve this socially, and the agent should surface it once, not nag.",
+      draft:null
+    });
+  }
+
+  const order={crit:0,warn:1,good:2};
+  F.sort((a,b)=>order[a.sev]-order[b.sev]);
+
+  return {score,dims,zoneRows,F,neededVols,effVols:Math.round(effVols),pledgedTotal,atRisk,reqTeams};
+}
+
+/* ============================================================
+   DRAFTING — composed from the record, not a template blob
+   ============================================================ */
+function draftFor(o,s,a){
+  const who = o.contact==="—" ? "there" : o.contact.split(" ").slice(-1)[0];
+  const miss=[];
+  if(!o.hic && BED_TYPES.includes(o.type)) miss.push("your HIC bed inventory");
+  if(!o.kit) miss.push("acknowledgement of the 2027 survey kit");
+  const zoneNames=o.zones.map(z=>{const zz=s.zones.find(x=>x.id===z);return zz?zz.name:z;});
+  const gapZone=a.zoneRows.filter(z=>o.zones.includes(z.id)&&z.ratio<0.95).sort((x,y)=>x.ratio-y.ratio)[0];
+
+  let body=`Hi ${who},\n\n`;
+  body+=`Riverbend's count night is 27 Jan — ${s.tminus} days out. `;
+  if(miss.length){
+    body+=`We still need ${miss.join(" and ")} from ${o.name}.\n\n`;
+  } else {
+    body+=`Checking in on ${o.name}'s piece.\n\n`;
+  }
+  if(gapZone){
+    body+=`Why it matters this year: ${gapZone.name} is currently at ${Math.round(gapZone.ratio*100)}% of the teams it needs, and ${gapZone.prior} people were counted there last cycle. You're one of the partners assigned to it.\n\n`;
+  } else {
+    body+=`You're assigned to ${zoneNames.join(" and ")}, carrying ${o.pledged} pledged volunteers.\n\n`;
+  }
+  if(o.silent>14) body+=`It's been ${o.silent} days since we last heard from you, so flagging this early rather than in January.\n\n`;
+  if(o.type==="dv") body+=`Separate note: because you're a DV provider, your numbers can't route through HMIS. I'd like to lock the aggregate path in writing this month so it isn't improvised on the night.\n\n`;
+  body+=`Reply here or grab 15 minutes on my calendar — whichever is faster.\n\n— M. Alvarez, Continuum Director`;
+
+  const subj = miss.length
+    ? `[T-${s.tminus}] ${miss[0].replace("your ","").replace("acknowledgement of the ","")} — ${o.name}`
+    : `[T-${s.tminus}] Count-night check-in — ${o.name}`;
+
+  return `TO      ${o.contact==="—"?"⚠ no named contact in CRM":o.contact+" · "+o.role}\nORG     ${o.name} (${o.id}) · ${TYPE_LABEL[o.type]}\nSUBJECT ${subj}\n\n${body}`;
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+const $=id=>document.getElementById(id);
+let view="orgs", lastA=null, hasRun=false;
+
+function sevOf(v){return v>=0.85?"good":v>=0.6?"warn":"crit";}
+function chip(txt,sev){return `<span class="chip sev-${sev}">${txt}</span>`;}
+
+function renderTable(){
+  const a=lastA||analyze(S);
+  let h="";
+  if(view==="orgs"){
+    h=`<table><thead><tr><th>Organization</th><th>HIC</th><th>Kit</th><th>Vols</th><th>Zones</th><th>Silent</th><th>Rel.</th></tr></thead><tbody>`;
+    S.orgs.forEach(o=>{
+      const risky = (BED_TYPES.includes(o.type)&&!o.hic) || (o.silent>14&&o.rel<0.75);
+      const crit = o.type==="dv"&&(!o.hic||!o.kit);
+      h+=`<tr class="${crit?"flagged":risky?"flagged-w":""}">
+        <td><span class="oname">${o.name}</span><span class="otype">${o.id} · ${TYPE_LABEL[o.type]}</span></td>
+        <td>${BED_TYPES.includes(o.type)?chip(o.hic?"yes":"no",o.hic?"good":"crit"):'<span class="num" style="color:var(--ink-3)">n/a</span>'}</td>
+        <td>${chip(o.kit?"ack":"—",o.kit?"good":"warn")}</td>
+        <td class="num">${o.pledged}</td>
+        <td class="num" style="color:var(--ink-3)">${o.zones.join(" ")}</td>
+        <td class="num" style="color:${o.silent>14?"var(--warn)":"var(--ink-3)"}">${o.silent}d</td>
+        <td class="num" style="color:${o.rel<0.6?"var(--crit)":o.rel<0.78?"var(--warn)":"var(--ink-3)"}">${o.rel.toFixed(2)}</td>
+      </tr>`;
+    });
+    h+=`</tbody></table>`;
+  } else {
+    h=`<table><thead><tr><th>Zone</th><th>Teams (eff.)</th><th>Coverage</th><th>Prior count</th></tr></thead><tbody>`;
+    [...a.zoneRows].sort((x,y)=>x.ratio-y.ratio).forEach(z=>{
+      const sev=sevOf(Math.min(1,z.ratio));
+      const pct=Math.round(z.ratio*100);
+      h+=`<tr class="${sev==="crit"?"flagged":sev==="warn"?"flagged-w":""}">
+        <td><span class="oname">${z.name}</span><span class="otype">${z.id} · ${z.terrain}</span></td>
+        <td class="num">${z.eff.toFixed(1)} / ${z.req}</td>
+        <td style="min-width:96px">${chip(pct+"%",sev)}<div class="bar"><i style="width:${Math.min(100,pct)}%;background:var(--${sev==="good"?"good":sev==="warn"?"warn":"crit"})"></i></div></td>
+        <td class="num">${z.prior}</td>
+      </tr>`;
+    });
+    h+=`</tbody></table>`;
+  }
+  $("tablewrap").innerHTML=h;
+
+  const short=a.effVols<a.neededVols;
+  $("panefoot").innerHTML=`
+    <span class="pf">Partners <b>${S.orgs.length}</b></span>
+    <span class="pf">Zones <b>${S.zones.length}</b></span>
+    <span class="pf">Volunteers pledged <b>${a.pledgedTotal}</b></span>
+    <span class="pf">Teams required <b>${a.reqTeams}</b></span>
+    <span class="pf">Effective @ ${Math.round(ATTRITION*100)}% attrition <b class="${short?"short":""}">${a.effVols}</b></span>
+    <span class="pf">Volunteers needed <b>${a.neededVols}</b></span>`;
+}
+
+function renderDims(a){
+  $("dims").innerHTML=a.dims.map(d=>{
+    const sev=sevOf(d.v);
+    return `<div class="dim"><span class="k">${d.k}</span>
+      <span class="v" style="color:var(--${sev==="good"?"good":sev==="warn"?"warn":"crit"})">${Math.round(d.v*100)}</span>
+      <span class="w">weight ${Math.round(d.w*100)}%</span></div>`;
+  }).join("");
+}
+
+function renderFindings(a){
+  if(!a.F.length){$("findings").innerHTML=`<div class="empty">No findings above threshold. Network is count-ready.</div>`;return;}
+  $("findings").innerHTML=a.F.map((f,i)=>{
+    const col=f.sev==="crit"?"crit":f.sev==="warn"?"warn":"good";
+    const draftHtml = f.draft
+      ? `<div><button class="act ghost tiny draftbtn" data-i="${i}">Draft outreach →</button><div class="draftslot" id="ds${i}"></div></div>`
+      : "";
+    return `<details class="finding"${i===0?" open":""}>
+      <summary>
+        <span class="fsev" style="background:var(--${col})"></span>
+        <span class="ftitle"><h4>${f.title}</h4><p>${f.sub}</p></span>
+        <span class="fcar">›</span>
+      </summary>
+      <div class="fbody">
+        <div class="eyebrow">${f.rule}</div>
+        <div class="evi">${f.evidence.map(e=>`<div>${e}</div>`).join("")}</div>
+        <div class="rec">${f.rec}</div>
+        ${draftHtml}
+      </div>
+    </details>`;
+  }).join("");
+
+  document.querySelectorAll(".draftbtn").forEach(b=>{
+    b.addEventListener("click",()=>{
+      const i=+b.dataset.i, slot=$("ds"+i);
+      if(slot.innerHTML){slot.innerHTML="";b.textContent="Draft outreach →";return;}
+      slot.innerHTML=`<div class="draft" style="margin-top:10px">${draftFor(a.F[i].draft,S,a)
+        .replace(/&/g,"&amp;").replace(/</g,"&lt;")}</div>`;
+      b.textContent="Hide draft";
+    });
+  });
+}
+
+function renderScore(a){
+  const p=$("scorepill"), sev=a.score>=80?"good":a.score>=60?"warn":"crit";
+  p.className="scorepill sev-"+sev;
+  p.textContent=a.score+" / 100";
+}
+
+const REDUCED=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function runScan(){
+  const btn=$("runbtn"); btn.disabled=true; btn.textContent="Scanning…";
+  const a=analyze(S); lastA=a; hasRun=true;
+  const steps=[
+    `<b>read</b> 34 partner records · 12 zone assignments · HIC roster`,
+    `<b>rule R1</b> coverage vs. prior-year population, ${Math.round(ATTRITION*100)}% attrition applied`,
+    `<b>rule R2</b> HIC dependency across ${S.orgs.filter(o=>BED_TYPES.includes(o.type)).length} bed-reporting partners`,
+    `<b>rule R3</b> HUD subpopulation completeness (DV · youth · veteran · HMIS)`,
+    `<b>rule R4</b> engagement decay — silence × prior reliability`,
+    `<b>rule R5</b> survey instrument version drift`,
+    `<b>rule R6</b> de-duplication exposure from overlapping canvass`,
+    `<span class="hit">${a.F.length} finding${a.F.length!==1?"s":""} above threshold</span> · ${a.F.filter(f=>f.sev==="crit").length} critical`,
+    `<span class="ok">readiness ${a.score}/100</span> · ${a.effVols} effective volunteers vs. ${a.neededVols} needed`
+  ];
+  const log=$("log"); log.innerHTML="";
+  let i=0;
+  const emit=()=>{
+    if(i<steps.length){
+      log.innerHTML+=(i?"\n":"")+steps[i]; log.scrollTop=log.scrollHeight; i++;
+      setTimeout(emit,REDUCED?0:95);
+    } else {
+      renderScore(a); renderDims(a); renderFindings(a); renderTable();
+      btn.disabled=false; btn.textContent="Re-run readiness scan";
+    }
+  };
+  if(REDUCED){ log.innerHTML=steps.join("\n"); renderScore(a); renderDims(a); renderFindings(a); renderTable();
+    btn.disabled=false; btn.textContent="Re-run readiness scan"; }
+  else emit();
+}
+
+/* ---- simulate controls ---- */
+const SIMS=[
+  {id:"reassign", label:"↳ Apply R1: split the college corps out of Z5", fn:s=>{
+    const o=s.orgs.find(x=>x.id==="O34"); if(o){o.zones=["Z2","Z6"];o.kit=true;o.silent=2;o.rel=0.70;}
+    const p=s.orgs.find(x=>x.id==="O33"); if(p) p.zones=["Z3","Z7"]; }},
+  {id:"hic", label:"4 shelters confirm HIC inventory", fn:s=>{
+    let n=0; s.orgs.forEach(o=>{ if(BED_TYPES.includes(o.type)&&!o.hic&&o.type!=="dv"&&n<4){o.hic=true;o.silent=1;n++;} }); }},
+  {id:"dv", label:"Safe Harbor DV agrees aggregate path", fn:s=>{
+    const o=s.orgs.find(x=>x.id==="O05"); if(o){o.hic=true;o.kit=true;o.silent=0;o.rel=0.80;o.contact="R. Amari";o.role="Executive Director";} }},
+  {id:"vols", label:"+65 volunteers recruited into rural zones", fn:s=>{
+    ["O09","O10","O23","O26","O31"].forEach(id=>{const o=s.orgs.find(x=>x.id===id); if(o){o.pledged+=13;o.silent=2;}}); }},
+  {id:"kits", label:"Survey kit read receipts land", fn:s=>{ s.orgs.forEach(o=>{if(!o.kit&&o.rel>=0.55)o.kit=true;}); }},
+  {id:"clock", label:"Advance clock 21 days", fn:s=>{
+    s.tminus=Math.max(0,s.tminus-21); s.orgs.forEach(o=>o.silent+=21); }},
+  {id:"drop", label:"Two outreach partners withdraw", fn:s=>{
+    ["O03","O19"].forEach(id=>{const o=s.orgs.find(x=>x.id===id); if(o){o.silent=29;o.rel=0.42;o.kit=false;o.pledged=0;}}); }}
+];
+
+function renderSims(){
+  $("simbtns").innerHTML=SIMS.map(x=>
+    `<button class="sim-b${S.sims[x.id]?" done":""}" data-sim="${x.id}">${S.sims[x.id]?"✓ ":""}${x.label}</button>`).join("");
+  document.querySelectorAll("[data-sim]").forEach(b=>{
+    b.addEventListener("click",()=>{
+      const s=SIMS.find(x=>x.id===b.dataset.sim);
+      if(S.sims[s.id])return;
+      s.fn(S); S.sims[s.id]=true;
+      $("tminus").textContent=S.tminus;
+      renderSims(); renderTable();
+      if(hasRun) runScan();
+      else $("log").innerHTML=`<span class="hit">state changed</span> — press <b>Run readiness scan</b> to see the agent recompute.`;
+    });
+  });
+}
+
+function reset(){
+  S=buildState(); lastA=null; hasRun=false;
+  $("tminus").textContent=S.tminus;
+  $("scorepill").className="scorepill sev-warn"; $("scorepill").textContent="—";
+  $("dims").innerHTML=""; $("findings").innerHTML=`<div class="empty">No scan run yet.</div>`;
+  $("log").innerHTML=`Idle. Agent has read access to 34 partner records, 12 zone assignments, the HIC roster, and the prior-year methodology doc.\nPress <b>Run readiness scan</b>.`;
+  renderSims(); renderTable();
+}
+
+document.querySelectorAll(".tab").forEach(t=>{
+  t.addEventListener("click",()=>{
+    document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected","false"));
+    t.setAttribute("aria-selected","true"); view=t.dataset.view; renderTable();
+  });
+});
+$("runbtn").addEventListener("click",runScan);
+$("resetbtn").addEventListener("click",reset);
+
+reset();
+</script>
+</body>
+</html>
